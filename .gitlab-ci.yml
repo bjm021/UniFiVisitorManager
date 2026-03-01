@@ -1,0 +1,33 @@
+stages:
+  - build
+
+docker-build:
+  stage: build
+  image: docker:latest
+  services:
+    - name: docker:dind
+      # This is crucial for university/shared runners
+      command: ["--tls=false"]
+  variables:
+    # This disables TLS which often causes 'handshake' failures in CI
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_HOST: tcp://docker:2375
+    # The full path to your uni registry image
+    IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+    LATEST_TAG: $CI_REGISTRY_IMAGE:latest
+
+  before_script:
+    # Uses the automatic credentials GitLab provides for your repo
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+
+  script:
+    - echo "Building image $IMAGE_TAG..."
+    - docker build -t "$IMAGE_TAG" -t "$LATEST_TAG" .
+    - echo "Pushing to $CI_REGISTRY..."
+    - docker push "$IMAGE_TAG"
+    - docker push "$LATEST_TAG"
+
+  rules:
+    # Only runs if there is a Dockerfile in the root
+    - exists:
+        - Dockerfile
