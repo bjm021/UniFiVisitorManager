@@ -328,6 +328,8 @@ tailwind.config.js
 
 # Data store
 visitors.db
+qr-data
+**/qr-data/**
 
 # CUSTOM DEBUG
 **/WebServerDirect.java

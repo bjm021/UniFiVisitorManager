@@ -15,10 +15,12 @@ import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.ssl.SSLContexts;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.jspecify.annotations.Nullable;
 
 import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -48,9 +50,11 @@ public class ApiClient {
         this.httpClient = createInsecureClient();
     }
 
+
     /**
-     * Make a request to the API /api/v1/developer/visitors
-     * @return List of Visitors
+     * Retrieves a list of visitors from the UniFi API.
+     *
+     * @return a {@code List} of {@code Visitor} objects representing the retrieved visitors
      */
     public List<Visitor> getVisitors() {
         if (DEBUG)
@@ -77,6 +81,12 @@ public class ApiClient {
         return visitorsOut;
     }
 
+    /**
+     * Retrieves a specific visitor by their unique identifier from the API.
+     *
+     * @param id the unique identifier of the visitor to retrieve
+     * @return a {@code Visitor} object representing the retrieved visitor, or {@code null} if the visitor was not found
+     */
     public Visitor getVisitor(String id) {
         if (DEBUG)
             System.out.println("[UniFi /getVisitors] Making call to: " + baseURL + "/api/v1/developer/visitors/" + id);
@@ -84,40 +94,21 @@ public class ApiClient {
         get.setHeader("Authorization", "Bearer " + token);
         get.setHeader("Accept", "application/json");
 
-        try (CloseableHttpResponse resp = httpClient.execute(get)) {
-            String s = IOUtils.toString(resp.getEntity().getContent(), StandardCharsets.UTF_8);
-            JSONObject root = new JSONObject(s);
-            JSONObject visitor = root.getJSONObject("data");
-            return new Visitor(visitor);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return extractVisitor(get);
     }
 
-    private static CloseableHttpClient createInsecureClient() throws Exception {
-        // 1. SSLContext erstellen, der ALLEM vertraut
-        SSLContext sslContext = SSLContexts.custom()
-                .loadTrustMaterial(null, TrustAllStrategy.INSTANCE)
-                .build();
-
-        // 2. SocketFactory konfigurieren (Hostname-Prüfung abschalten)
-        var sslSocketFactory = SSLConnectionSocketFactoryBuilder.create()
-                .setSslContext(sslContext)
-                .setHostnameVerifier(NoopHostnameVerifier.INSTANCE)
-                .build();
-
-        // 3. Connection Manager mit dieser Factory erstellen
-        var connectionManager = PoolingHttpClientConnectionManagerBuilder.create()
-                .setSSLSocketFactory(sslSocketFactory)
-                .build();
-
-        // 4. Den finalen Client bauen
-        return HttpClients.custom()
-                .setConnectionManager(connectionManager)
-                .build();
-    }
-
+    /**
+     * Creates a new visitor in the UniFi system by making a POST request to the corresponding API endpoint
+     * with the specified visitor details.
+     *
+     * @param firstName the first name of the visitor
+     * @param lastName the last name of the visitor
+     * @param email the email address of the visitor
+     * @param startTime the start time of the visitor's access in Unix timestamp format
+     * @param endTime the end time of the visitor's access in Unix timestamp format
+     * @param remarks additional notes or remarks about the visitor
+     * @return the {@code Visitor} object representing the created visitor, or {@code null} if the creation failed
+     */
     public Visitor createVisitor(String firstName, String lastName, String email, long startTime, long endTime, String remarks) {
         if (DEBUG)
             System.out.println("[UniFi /createVisitor] Making call to: " + baseURL + "/api/v1/developer/visitors");
@@ -145,17 +136,15 @@ public class ApiClient {
 
         post.setEntity(new StringEntity(body.toString(), StandardCharsets.UTF_8));
 
-        try (CloseableHttpResponse resp = httpClient.execute(post)) {
-            String s = IOUtils.toString(resp.getEntity().getContent(), StandardCharsets.UTF_8);
-            JSONObject root = new JSONObject(s);
-            JSONObject visitor = root.getJSONObject("data");
-            return new Visitor(visitor);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return extractVisitor(post);
     }
 
+    /**
+     * Assigns the QR code option to a specific visitor.
+     *
+     * @param visitor the {@code Visitor} object representing the visitor to whom the QR code will be assigned
+     * @return {@code true} if the QR code was successfully assigned, {@code false} otherwise
+     */
     public boolean assignQR(Visitor visitor) {
         if (DEBUG)
             System.out.println("[UniFi /assignQR] Making call to: " + baseURL + "/api/v1/developer/visitors/" + visitor.getId() + "/qr_codes");
@@ -164,6 +153,12 @@ public class ApiClient {
         return simpleNoDataResponse(put);
     }
 
+    /**
+     * Unassigns the QR code option from a specific visitor, effectively preventing the visitor from entering any doors using a QR code.
+     *
+     * @param visitor the {@code Visitor} object representing the visitor whose QR code will be unassigned
+     * @return {@code true} if the QR code was successfully unassigned, {@code false} otherwise
+     */
     public boolean unAssignQR(Visitor visitor) {
         if (DEBUG)
             System.out.println("[UniFi /assignQR] Making call to: " + baseURL + "/api/v1/developer/visitors/" + visitor.getId() + "/qr_codes");
@@ -172,6 +167,13 @@ public class ApiClient {
         return simpleNoDataResponse(delete);
     }
 
+    /**
+     * Retrieves the unique identifier of the "All Doors" door group from the UniFi API.
+     * TODO - This is only for now - later a fine-grained option is provided for the user to choose the exact doors/groups they want to assign.
+     *
+     * @return the unique identifier of the "All Doors" door group, or {@code null} if the group
+     *         was not found or an error occurred.
+     */
     public String getAllDoorsGroupId() {
         if (DEBUG)
             System.out.println("[UniFi /getAllDoorsGroupId] Making call to: " + baseURL + "/api/v1/developer/door_groups/topology");
@@ -195,20 +197,12 @@ public class ApiClient {
         return null;
     }
 
-    private boolean simpleNoDataResponse(HttpUriRequestBase base) {
-        base.setHeader("Authorization", "Bearer " + token);
-        base.setHeader("Accept", "application/json");
-
-        try (CloseableHttpResponse resp = httpClient.execute(base)) {
-            String s = IOUtils.toString(resp.getEntity().getContent(), StandardCharsets.UTF_8);
-            JSONObject root = new JSONObject(s);
-            return true;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
+    /**
+     * Downloads the QR code associated with the specified visitor and saves it as a PNG file.
+     * The file is named using the visitor's unique identifier.
+     *
+     * @param visitor the {@code Visitor} object for which the QR code is to be downloaded
+     */
     public void downloadQR(Visitor visitor) {
         if (DEBUG) {
             System.out.println("[UniFi /downloadQR] Making call to: " + baseURL + "/api/v1/developer/credentials/qr_codes/download/" + visitor.getId());
@@ -217,7 +211,16 @@ public class ApiClient {
         HttpGet get = new HttpGet(baseURL + "/api/v1/developer/credentials/qr_codes/download/" + visitor.getId());
         get.setHeader("Authorization", "Bearer " + token);
 
-        Path out = Paths.get(visitor.getId() + ".png");
+        // save to /qr-data/<uuid>.png
+        Path out = Paths.get("qr-data", visitor.getId() + ".png");
+
+        try {
+            Files.createDirectories(out.getParent());
+        } catch (IOException e) {
+            System.err.println("[UniFi /downloadQR] Failed to create directory for QR Code: " + e.getMessage());
+            e.printStackTrace();
+            return;
+        }
 
         // Put BOTH the network connection and the file stream inside the parentheses!
         try (CloseableHttpResponse resp = httpClient.execute(get);
@@ -232,4 +235,109 @@ public class ApiClient {
             e.printStackTrace();
         }
     }
+
+    // ------------------------------ HELPER FUNCTIONS ------------------------------
+
+    /**
+     * Creates an {@code CloseableHttpClient} instance that bypasses SSL security checks, allowing connections
+     * to be established with SSL endpoints without verifying certificates or hostnames.
+     * <p>
+     * This is important because UniFi Consoles have self-signed certificates by default, and this client needs to be able to connect to them without
+     * throwing SSL exceptions.
+     *
+     * @return a {@code CloseableHttpClient} configured to trust all SSL certificates and ignore hostname verification
+     * @throws Exception if an error occurs during the client creation process
+     */
+    private static CloseableHttpClient createInsecureClient() throws Exception {
+        // 1. SSLContext erstellen, der ALLEM vertraut
+        SSLContext sslContext = SSLContexts.custom()
+                .loadTrustMaterial(null, TrustAllStrategy.INSTANCE)
+                .build();
+
+        // 2. SocketFactory konfigurieren (Hostname-Prüfung abschalten)
+        var sslSocketFactory = SSLConnectionSocketFactoryBuilder.create()
+                .setSslContext(sslContext)
+                .setHostnameVerifier(NoopHostnameVerifier.INSTANCE)
+                .build();
+
+        // 3. Connection Manager mit dieser Factory erstellen
+        var connectionManager = PoolingHttpClientConnectionManagerBuilder.create()
+                .setSSLSocketFactory(sslSocketFactory)
+                .build();
+
+        // 4. Den finalen Client bauen
+        return HttpClients.custom()
+                .setConnectionManager(connectionManager)
+                .build();
+    }
+
+    /**
+     * Extracts a {@code Visitor} object from the HTTP response of the given HTTP request operation.
+     *
+     * @param op the {@code HttpUriRequestBase} operation to execute and extract a {@code Visitor} from
+     * @return the {@code Visitor} object parsed from the response data, or {@code null} if an error occurs during the extraction
+     */
+    @Nullable
+    private Visitor extractVisitor(HttpUriRequestBase op) {
+        try (CloseableHttpResponse resp = httpClient.execute(op)) {
+            int statusCode = resp.getCode();
+            String s = IOUtils.toString(resp.getEntity().getContent(), StandardCharsets.UTF_8);
+
+            if (statusCode >= 300) {
+                System.err.println("[UniFi API Error] Status: " + statusCode + ", Response: " + s);
+                return null;
+            }
+
+            JSONObject root = new JSONObject(s);
+
+            if (!"SUCCESS".equals(root.optString("code"))) {
+                System.err.println("[UniFi API Error] UniFi returned error: " + root.optString("msg"));
+                return null;
+            }
+
+            JSONObject visitor = root.getJSONObject("data");
+            return new Visitor(visitor);
+        } catch (IOException | org.json.JSONException e) {
+            System.err.println("[UniFi API Error] Failed to extract visitor: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     * Executes the given HTTP request and checks for a simple success response without processing additional data.
+     * This method sets necessary headers, including authorization and accept type, then performs the request.
+     *
+     * @param base the {@code HttpUriRequestBase} representing the HTTP request to be executed
+     * @return {@code true} if the request was executed successfully, {@code false} otherwise
+     */
+    private boolean simpleNoDataResponse(HttpUriRequestBase base) {
+        base.setHeader("Authorization", "Bearer " + token);
+        base.setHeader("Accept", "application/json");
+
+        try (CloseableHttpResponse resp = httpClient.execute(base)) {
+            int statusCode = resp.getCode();
+            String s = IOUtils.toString(resp.getEntity().getContent(), StandardCharsets.UTF_8);
+
+            if (statusCode >= 300) {
+                System.err.println("[UniFi API Error] Status: " + statusCode + ", Response: " + s);
+                return false;
+            }
+
+            JSONObject root = new JSONObject(s);
+
+            // FIX: Return true ONLY if UniFi explicitly says SUCCESS
+            boolean isSuccess = "SUCCESS".equals(root.optString("code"));
+            if (!isSuccess) {
+                System.err.println("[UniFi API Error] Operation failed: " + root.optString("msg"));
+            }
+            return isSuccess;
+
+        } catch (IOException | org.json.JSONException e) {
+            System.err.println("[UniFi API Error] Request failed: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
 }
