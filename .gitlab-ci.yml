@@ -6,21 +6,19 @@ docker-build:
   image: docker:latest
   services:
     - name: docker:dind
-      # We remove the command override to let it start normally
   variables:
     DOCKER_TLS_CERTDIR: ""
-    # THE FIX: Change from tcp://docker:2375 to tcp://localhost:2375
-    # or just unset it and let it use the default unix socket if available
-    DOCKER_HOST: tcp://localhost:2375 
     IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
     LATEST_TAG: $CI_REGISTRY_IMAGE:latest
 
   before_script:
-    # Adding a wait to ensure the dind service is actually up before we login
-    - sleep 5 
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
 
   script:
     - docker build -t "$IMAGE_TAG" -t "$LATEST_TAG" .
     - docker push "$IMAGE_TAG"
     - docker push "$LATEST_TAG"
+
+  rules:
+    - exists:
+        - Dockerfile
