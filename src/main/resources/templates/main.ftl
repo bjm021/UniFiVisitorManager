@@ -17,6 +17,7 @@
             background-size: contain;
         }
     </style>
+    <#include "components/pwa-head.ftl">
 </head>
 <body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen p-4">
 

@@ -13,10 +13,10 @@ public class PrivilegedVisitor implements Serializable {
         this.id = id;
     }
 
-    public String getFirstname() {
+    public String getFirstName() {
         return firstname;
     }
-    public String getLastname() {
+    public String getLastName() {
         return lastname;
     }
     public String getEmail() {

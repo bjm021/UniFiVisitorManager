@@ -25,7 +25,7 @@ public class VisitorManager {
             // do something with the database
             db = DBMaker.fileDB("visitors.db").make();
 
-            privilegedVisitors = db.<String, Visitor>hashMap("visitors")
+            privilegedVisitors = db.<String, PrivilegedVisitor>hashMap("visitors")
                     .keySerializer(Serializer.STRING)
                     .valueSerializer((Serializer<PrivilegedVisitor>) Serializer.JAVA) // Cast to fix the second warning
                     .createOrOpen();
@@ -67,15 +67,6 @@ public class VisitorManager {
             System.err.println("[UniFi VisitorManager] Exiting...");
             System.exit(1);
         }
-
-
-    }
-
-    public static void programLogic() {
-        // test
-        System.out.println("[UniFi VisitorManager] Database initialized successfully!");
-        System.out.println("[UniFi DataStore] Privileged Visitors:");
-        privilegedVisitors.forEach((k, v) -> System.out.println(k + ": " + v));
     }
 
     /**

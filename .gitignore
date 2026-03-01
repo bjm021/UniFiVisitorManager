@@ -331,4 +331,4 @@ visitors.db
 
 # CUSTOM DEBUG
 **/WebServerDirect.java
-WebServerDirect.java
+**/MainCLI.java
