@@ -3,15 +3,10 @@ stages:
 
 docker-build:
   stage: build
-  image: docker:latest
+  image: docker:cli
   services:
     - name: docker:dind
-      # This is crucial for university/shared runners
-      command: ["--tls=false"]
   variables:
-    # This disables TLS which often causes 'handshake' failures in CI
-    DOCKER_TLS_CERTDIR: ""
-    DOCKER_HOST: tcp://docker:2375
     # The full path to your uni registry image
     IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
     LATEST_TAG: $CI_REGISTRY_IMAGE:latest
