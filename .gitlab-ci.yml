@@ -1,24 +1,21 @@
 stages:
   - build
 
-docker-build:
+build-java-app:
   stage: build
-  image: docker:latest
-  services:
-    - name: docker:dind
-  variables:
-    DOCKER_TLS_CERTDIR: ""
-    IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
-    LATEST_TAG: $CI_REGISTRY_IMAGE:latest
-
-  before_script:
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
-
+  image:
+    name: gcr.io/kaniko-project/executor:v1.14.0-debug
+    entrypoint: [""]
   script:
-    - docker build -t "$IMAGE_TAG" -t "$LATEST_TAG" .
-    - docker push "$IMAGE_TAG"
-    - docker push "$LATEST_TAG"
-
+    # 1. Generate registry credentials for GitLab
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"auth\":\"$(printf "%s:%s" "$CI_REGISTRY_USER" "$CI_REGISTRY_PASSWORD" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+    
+    # 2. Build and push to the h-da registry
+    - /kaniko/executor
+      --context "$CI_PROJECT_DIR"
+      --dockerfile "$CI_PROJECT_DIR/Dockerfile"
+      --destination "$CI_REGISTRY_IMAGE:latest"
+      --destination "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
   rules:
     - exists:
         - Dockerfile
