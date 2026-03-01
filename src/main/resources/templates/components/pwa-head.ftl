@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="VisitorManager">
 
-<link rel="apple-touch-icon" href="/public/img/icon-192.png">
+<link rel="apple-touch-icon" href="/images/icon-192.png">
 
 <script>
     if ('serviceWorker' in navigator) {
