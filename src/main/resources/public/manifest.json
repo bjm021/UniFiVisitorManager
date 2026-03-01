@@ -1,6 +1,6 @@
 {
   "name": "UniFi Visitor Manager",
-  "short_name": "VisitorManager",
+  "short_name": "UVM",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f3f4f6",
