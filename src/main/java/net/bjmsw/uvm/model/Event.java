@@ -9,17 +9,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Event implements Serializable {
-
-    private static final long serialVersionUID = -3184426562074631338L;
-
-    private final String id, name, description;
+    private String id, name, description;
 
     AccessResource accessResource;
 
-    private final long start_time, end_time;
+    private long start_time, end_time;
 
-    private final List<PrivilegedVisitor> visitors;
+    private List<PrivilegedVisitor> visitors;
     private List<Visitor> correspondingConsoleVisitorObjects;
+
+    /**
+     * Default constructor for the Event class.
+     * Initializes a new instance of the Event class with no properties set.
+     * This is needed for deserialization purposes.
+     */
+    private Event() {}
 
     public Event(String id, String name, String description, long start_time, long end_time, AccessResource accessResource, List<PrivilegedVisitor> visitors) {
         this.id = id;

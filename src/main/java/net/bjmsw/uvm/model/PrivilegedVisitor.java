@@ -4,20 +4,27 @@ import java.io.Serializable;
 
 public class PrivilegedVisitor implements Serializable {
 
-    private final String firstname, lastname, email, id;
+    private String firstName, lastName, email, id;
+
+    /**
+     * Default constructor for the PrivilegedVisitor class.
+     * Initializes a new instance of the PrivilegedVisitor class with no properties set.
+     * This constructor is needed for deserialization purposes.
+     */
+    private PrivilegedVisitor() {}
 
     public PrivilegedVisitor(String firstname, String lastname, String email, String id) {
-        this.firstname = firstname;
-        this.lastname = lastname;
+        this.firstName = firstname;
+        this.lastName = lastname;
         this.email = email;
         this.id = id;
     }
 
     public String getFirstName() {
-        return firstname;
+        return firstName;
     }
     public String getLastName() {
-        return lastname;
+        return lastName;
     }
     public String getEmail() {
         return email;

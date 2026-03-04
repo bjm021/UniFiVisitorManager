@@ -1,5 +1,6 @@
 package net.bjmsw.uvm.util;
 
+import net.bjmsw.uvm.VisitorManager;
 import net.bjmsw.uvm.model.Visitor;
 
 import java.time.Instant;
@@ -38,7 +39,7 @@ public class TimeUtils {
     }
 
     /**
-     * Converts a Unix epoch timestamp (in seconds) into a formatted datetime string in the "Europe/Berlin" timezone.
+     * Converts a Unix epoch timestamp (in seconds) into a formatted datetime string in the server's local timezone (e.g., Europe/Berlin) using the specified format pattern.
      *
      * @param epochSeconds the Unix epoch time in seconds to be converted
      * @param format the datetime format pattern to use for conversion
@@ -47,7 +48,7 @@ public class TimeUtils {
     public static String fromEpochSecondsToDateTimeString(long epochSeconds, String format) {
         Instant instant = Instant.ofEpochSecond(epochSeconds);
 
-        ZoneId zone = ZoneId.of("Europe/Berlin");
+        ZoneId zone = ZoneId.of(VisitorManager.getSettings().getOrDefault("timezone", "Europe/Berlin"));
         ZonedDateTime zdt = instant.atZone(zone);
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format);
@@ -96,7 +97,7 @@ public class TimeUtils {
      *         "start to end", where start and end are formatted datetime strings
      */
     public static String getPrettyDateRange(long start_time, long end_time) {
-        ZoneId siteZone = ZoneId.of("Europe/Berlin");
+        ZoneId siteZone = ZoneId.of(VisitorManager.getSettings().getOrDefault("timezone", "Europe/Berlin"));
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
         String start = formatter.format(

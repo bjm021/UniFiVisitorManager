@@ -91,6 +91,36 @@
                     <input type="password" name="token" placeholder="Enter your UniFi security token" required
                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2.5 focus:border-blue-500 focus:ring-blue-500 text-gray-900">
                 </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">System Timezone</label>
+                    <select name="timezone" required
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2.5 focus:border-blue-500 focus:ring-blue-500 text-gray-900 bg-white">
+                        <option value="UTC" selected>UTC (Default)</option>
+
+                        <optgroup label="Europe">
+                            <option value="Europe/London">London (GMT/BST)</option>
+                            <option value="Europe/Berlin">Berlin / Central Europe (CET/CEST)</option>
+                            <option value="Europe/Helsinki">Helsinki / Eastern Europe (EET/EEST)</option>
+                        </optgroup>
+
+                        <optgroup label="Americas">
+                            <option value="America/New_York">Eastern Time (US & Canada)</option>
+                            <option value="America/Chicago">Central Time (US & Canada)</option>
+                            <option value="America/Denver">Mountain Time (US & Canada)</option>
+                            <option value="America/Los_Angeles">Pacific Time (US & Canada)</option>
+                            <option value="America/Sao_Paulo">Brasilia Time (South America)</option>
+                        </optgroup>
+
+                        <optgroup label="Asia & Pacific">
+                            <option value="Asia/Dubai">Dubai (GST)</option>
+                            <option value="Asia/Singapore">Singapore (SGT)</option>
+                            <option value="Asia/Tokyo">Tokyo (JST)</option>
+                            <option value="Australia/Sydney">Sydney (AEST/AEDT)</option>
+                            <option value="Pacific/Auckland">Auckland (NZST/NZDT)</option>
+                        </optgroup>
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">Required to correctly generate the start and end times on Apple Wallet passes and emails.</p>
+                </div>
             </div>
         </details>
 

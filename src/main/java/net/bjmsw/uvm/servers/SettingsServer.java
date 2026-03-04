@@ -72,6 +72,10 @@ public class SettingsServer {
                     if (token != null && !token.isBlank()) {
                         VisitorManager.getSettings().put("token", token);
                     }
+                    String tzString = ctx.formParam("timezone");
+                    if (tzString != null && !tzString.isBlank()) {
+                        VisitorManager.getSettings().put("timezone", tzString);
+                    }
 
                     // --- 2. Apple Wallet Settings (jpasskit) ---
                     VisitorManager.getSettings().put("appleTeamId", ctx.formParam("appleTeamId"));

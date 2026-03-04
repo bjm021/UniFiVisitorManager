@@ -2,6 +2,8 @@ package net.bjmsw.uvm;
 
 import net.bjmsw.uvm.model.Event;
 import net.bjmsw.uvm.model.PrivilegedVisitor;
+import net.bjmsw.uvm.serialization.EventSerializer;
+import net.bjmsw.uvm.serialization.PrivilegedVisitorSerializer;
 import net.bjmsw.uvm.servers.MainServer;
 import net.bjmsw.uvm.servers.SettingsServer;
 import net.bjmsw.uvm.util.ApiClient;
@@ -32,12 +34,12 @@ public class VisitorManager {
 
             privilegedVisitors = db.<String, PrivilegedVisitor>hashMap("visitors")
                     .keySerializer(Serializer.STRING)
-                    .valueSerializer((Serializer<PrivilegedVisitor>) Serializer.JAVA)
+                    .valueSerializer(new PrivilegedVisitorSerializer())
                     .createOrOpen();
 
             events = db.<String, Event>hashMap("events")
                     .keySerializer(Serializer.STRING)
-                    .valueSerializer((Serializer<Event>) Serializer.JAVA)
+                    .valueSerializer(new EventSerializer())
                     .createOrOpen();
 
             settings = db.<String, String>hashMap("settings")

@@ -3,33 +3,29 @@ package net.bjmsw.uvm.model;
 import net.bjmsw.uvm.util.ApiClient;
 import net.bjmsw.uvm.util.TimeUtils;
 import org.json.JSONObject;
-import org.jspecify.annotations.NonNull;
-import org.mapdb.DataInput2;
-import org.mapdb.DataOutput2;
-import org.mapdb.Serializer;
 
-import java.io.IOException;
 import java.io.Serializable;
-import java.sql.Time;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 
 /**
  * Represents a visitor in the UniFi system.
  */
 public class Visitor implements Serializable {
 
-    private final String id, firstname, lastname, status, inviter_id, inviter_name, remarks, email, visitor_company;
+    private String id, firstName, lastName, status, inviter_id, inviter_name, remarks, email, visitor_company;
 
-    private final long start_time, end_time;
+    private long start_time, end_time;
 
-    private final JSONObject allData;
+    /**
+     * Default constructor for the Visitor class.
+     * Initializes a new instance of the Visitor class with no properties set.
+     * This constructor is needed for deserialization purposes.
+     */
+    private Visitor() {}
 
-    public Visitor(JSONObject allData, String id, String firstName, String lastName, String status, String inviter_id, String inviter_name, String remarks, String email, String visitor_company, long start_time, long end_time) {
-        this.allData = allData;
+    public Visitor(String id, String firstName, String lastName, String status, String inviter_id, String inviter_name, String remarks, String email, String visitor_company, long start_time, long end_time) {
         this.id = id;
-        this.firstname = firstName;
-        this.lastname = lastName;
+        this.firstName = firstName;
+        this.lastName = lastName;
         this.status = status;
         this.inviter_id = inviter_id;
         this.inviter_name = inviter_name;
@@ -41,10 +37,9 @@ public class Visitor implements Serializable {
     }
 
     public Visitor(JSONObject allData) {
-        this.allData = allData;
         this.id = allData.getString("id");
-        this.firstname = allData.getString("first_name");
-        this.lastname = allData.getString("last_name");
+        this.firstName = allData.getString("first_name");
+        this.lastName = allData.getString("last_name");
         this.status = allData.getString("status");
         this.inviter_id = allData.getString("inviter_id");
         this.inviter_name = allData.getString("inviter_name");
@@ -64,7 +59,7 @@ public class Visitor implements Serializable {
     }
 
     public String getFirstName() {
-        return firstname;
+        return firstName;
     }
 
     public String getInviter_id() {
@@ -76,7 +71,7 @@ public class Visitor implements Serializable {
     }
 
     public String getLastName() {
-        return lastname;
+        return lastName;
     }
 
     public String getRemarks() {
@@ -121,6 +116,6 @@ public class Visitor implements Serializable {
 
     @Override
     public String toString() {
-        return "[UniFi Visitor] " + firstname + " " + lastname + " (" + email + ") [" + remarks + "] <" + id + ">";
+        return "[UniFi Visitor] " + firstName + " " + lastName + " (" + email + ") [" + remarks + "] <" + id + ">";
     }
 }

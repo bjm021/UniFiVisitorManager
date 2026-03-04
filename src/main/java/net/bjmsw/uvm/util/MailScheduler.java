@@ -171,7 +171,7 @@ public class MailScheduler {
                 System.out.println("[UniFi QR] QR Code Data: " + qrData);
 
 
-                PKPass pk = PKPassUtil.buildWalletPass(v, qrData, eventName);
+                PKPass pk = PKPassUtil.buildWalletPass(v, qrData, eventName, customMessage);
                 byte[] pkdata = PKPassUtil.signAndZipPass(pk);
 
                 if (mailSenderQueue.offer(new MailSendTask(v, eventName, htmlBody, pkdata))) {
