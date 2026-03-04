@@ -34,7 +34,7 @@ To utilize the full feature set of this application, the following are required:
 ## Installation and Execution
 
 1. Clone the repository:
-    git clone https://github.com/bjmsw/UniFi-Visitor-Manager.git
+    git clone https://github.com/bjm021/UniFiVisitorManager.git
 
 2. Build the executable JAR:
     mvn clean package
