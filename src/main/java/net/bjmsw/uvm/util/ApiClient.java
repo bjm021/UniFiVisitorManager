@@ -1,5 +1,6 @@
 package net.bjmsw.uvm.util;
 
+import net.bjmsw.uvm.VisitorManager;
 import net.bjmsw.uvm.model.AccessResource;
 import net.bjmsw.uvm.model.Visitor;
 import org.apache.commons.io.IOUtils;
@@ -104,13 +105,13 @@ public class ApiClient {
     /**
      * Creates a new visitor in the UniFi system and assigns them to a specific access resource.
      *
-     * @param firstName the first name of the visitor
-     * @param lastName the last name of the visitor
-     * @param email the email address of the visitor
-     * @param startTime the start time of the visitor's access in Unix timestamp format (seconds)
-     * @param endTime the end time of the visitor's access in Unix timestamp format (seconds)
-     * @param remarks additional notes (e.g., internal Event ID)
-     * @param resourceId the UUID of the UniFi location/door
+     * @param firstName    the first name of the visitor
+     * @param lastName     the last name of the visitor
+     * @param email        the email address of the visitor
+     * @param startTime    the start time of the visitor's access in Unix timestamp format (seconds)
+     * @param endTime      the end time of the visitor's access in Unix timestamp format (seconds)
+     * @param remarks      additional notes (e.g., internal Event ID)
+     * @param resourceId   the UUID of the UniFi location/door
      * @param resourceType the type of the resource (e.g., "building", "door", "floor")
      * @return the created Visitor, or null if it failed
      */
@@ -131,22 +132,15 @@ public class ApiClient {
         body.put("end_time", endTime);
         body.put("remarks", remarks);
 
-        // --- NEW RESOURCE LOGIC ---
         JSONArray resources = new JSONArray();
         JSONObject resource = new JSONObject();
         resource.put("id", resourceId);
-        resource.put("type", resourceType); // Crucial: UniFi needs to know what this ID represents!
+        resource.put("type", sanitizeResourceType(resourceType));
         resources.put(resource);
 
         body.put("resources", resources);
 
         post.setEntity(new StringEntity(body.toString(), StandardCharsets.UTF_8));
-
-        // DEBUG PRINT REQUEST DATA:
-        if (DEBUG) {
-            System.out.println("[UniFi /createVisitor] Request Body:");
-            System.out.println(body.toString(2));
-        }
 
         return extractVisitor(post);
     }
@@ -180,7 +174,8 @@ public class ApiClient {
     }
 
     public List<AccessResource> getAccessResources() {
-        if (DEBUG) System.out.println("[UniFi /getAccessResources] Making call to: " + baseURL + "/api/v1/developer/door_groups/topology");
+        if (DEBUG)
+            System.out.println("[UniFi /getAccessResources] Making call to: " + baseURL + "/api/v1/developer/door_groups/topology");
         List<AccessResource> accessResourcesOut = new ArrayList<>();
 
         HttpGet get = new HttpGet(baseURL + "/api/v1/developer/door_groups/topology");
@@ -211,7 +206,7 @@ public class ApiClient {
                         topologyData.getString("id"),
                         topologyData.getString("name"),
                         topologyData.getString("type"),
-                        Objects.equals(topologyData.getString("type"), "building")
+                        isResourceAGroup(topologyData.getString("type"))
                 );
 
                 // Use optJSONArray to prevent crashes if it's missing
@@ -230,7 +225,7 @@ public class ApiClient {
                                         resourceData.getString("id"),
                                         resourceData.getString("name"),
                                         resourceData.getString("type"),
-                                        !Objects.equals(resourceData.getString("type"), "door_group")
+                                        isResourceAGroup(resourceData.getString("type"))
                                 );
                                 ar.addChild(arc);
                             }
@@ -252,7 +247,7 @@ public class ApiClient {
      * TODO - This is only for now - later a fine-grained option is provided for the user to choose the exact doors/groups they want to assign.
      *
      * @return the unique identifier of the "All Doors" door group, or {@code null} if the group
-     *         was not found or an error occurred.
+     * was not found or an error occurred.
      */
     public String getAllDoorsGroupId() {
         if (DEBUG)
@@ -316,7 +311,26 @@ public class ApiClient {
         }
     }
 
+    /**
+     * Deletes a visitor with the specified unique identifier from the UniFi API.
+     * The deletion process forces removal of the visitor, even if they are currently active.
+     *
+     * @param visitorID the unique identifier of the visitor to be deleted
+     * @return {@code true} if the visitor was successfully deleted, {@code false} otherwise
+     */
+    public boolean deleteVisitor(String visitorID) {
+        if (DEBUG) {
+            System.out.println("[UniFi /deleteVisitor] Making call to: " + baseURL + "/api/v1/developer/visitors/" + visitorID);
+        }
+        HttpDelete delete = new HttpDelete(baseURL + "/api/v1/developer/visitors/" + visitorID + "?is_force=true");
+        delete.setHeader("Authorization", "Bearer " + token);
+        delete.setHeader("Accept", "application/json");
+
+        return simpleNoDataResponse(delete);
+    }
+
     // ------------------------------ HELPER FUNCTIONS ------------------------------
+
 
     /**
      * Creates an {@code CloseableHttpClient} instance that bypasses SSL security checks, allowing connections
@@ -325,8 +339,11 @@ public class ApiClient {
      * This is important because UniFi Consoles have self-signed certificates by default, and this client needs to be able to connect to them without
      * throwing SSL exceptions.
      *
-     * @return a {@code CloseableHttpClient} configured to trust all SSL certificates and ignore hostname verification
-     * @throws Exception if an error occurs during the client creation process
+     * @return a {@code CloseableHttpClient} instance configured to bypass SSL certificate and
+     * hostname verification
+     * @throws NoSuchAlgorithmException if the specified SSL algorithm does not exist
+     * @throws KeyStoreException        if there is an issue with the trust material
+     * @throws KeyManagementException   if there is an error initializing the SSL context
      */
     private static CloseableHttpClient createInsecureClient() throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
         // 1. SSLContext erstellen, der ALLEM vertraut
@@ -418,6 +435,40 @@ public class ApiClient {
             e.printStackTrace();
             return false;
         }
+    }
+
+    /**
+     * Sanitizes the provided resource type by normalizing and mapping it to a recognized value used by the API.
+     *
+     * @param topologyType the type of the resource to sanitize (e.g., "building", "door", "floor");
+     *                     may be {@code null}, in which case a default value is returned.
+     * @return a sanitized {@code String} representing the resource type; returns "door" for {@code null} input or "door_group" for unrecognized types.
+     */
+    private String sanitizeResourceType(String topologyType) {
+        if (topologyType == null) return "door"; // Default fallback
+
+        return switch (topologyType.toLowerCase()) {
+            case "building", "site", "floor", "group", "access" ->
+                    "door_group"; // Map all structural groups to what the API wants
+            case "door" -> "door";
+            default -> {
+                System.out.println("[UniFi ARSanitizer] Unknown resource type encountered: " + topologyType);
+                yield "door_group";
+            }
+        };
+    }
+
+    /**
+     * Determines whether the specified resource type corresponds to a group.
+     *
+     * @param type the resource type to check; typically represents a category such as "building",
+     *             "door", or "group". May be {@code null}, in which case the default sanitized value
+     *             will be used.
+     * @return {@code true} if the sanitized resource type is identified as a group (e.g., "door_group");
+     * {@code false} otherwise.
+     */
+    private boolean isResourceAGroup(String type) {
+        return sanitizeResourceType(type).equals("door_group");
     }
 
 }

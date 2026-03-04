@@ -1,4 +1,7 @@
 <!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+</head>
 <html>
 <body style="font-family: sans-serif; background-color: #f3f4f6; padding: 20px;">
 
@@ -8,6 +11,22 @@
     <p style="color: #4b5563; font-size: 16px; line-height: 1.5;">
         You have been granted access for the upcoming event: <strong>${eventName}</strong>.
     </p>
+
+    <div style="background-color: rgb(220 252 231); border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; margin-top: 25px; text-align: center;">
+        <p style="color: #334155; font-weight: bold; margin-top: 0;">Your entry is valid during</p>
+        <p style="color: #64748b; font-size: 14px; margin-bottom: 0;">
+            <span style="font-weight: bold; color: #1e40af;">${visitStartTime}</span> to <span style="font-weight: bold; color: #1e40af;">${visitEndTime}</span>
+        </p>
+    </div>
+
+    <#if customMessage??>
+        <div style="background-color: rgb(255 247 237); border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; margin-top: 25px; text-align: center;">
+            <p style="color: #334155; font-weight: bold; margin-top: 0;">Additional Information</p>
+            <p style="color: #64748b; font-size: 14px; margin-bottom: 0;">
+                ${customMessage}
+            </p>
+        </div>
+    </#if>
 
     <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; margin-top: 25px; text-align: center;">
         <p style="color: #334155; font-weight: bold; margin-top: 0;">Add to your phone for quick access</p>
@@ -20,6 +39,12 @@
         <p style="color: #64748b; font-size: 14px;">Or scan this QR code at the intercom:</p>
 
         <img src="cid:qr_image" alt="Access QR Code" style="width: 250px; height: 250px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px;" />
+    </div>
+
+    <!-- add company name footer -->
+    <div style="text-align: center; margin-top: 30px;">
+        <p style="color: #9ca3af; font-size: 12px; margin-bottom: 5px;">${companyName}</p>
+        <p style="color: #9ca3af; font-size: 12px; margin-bottom: 0;">&copy; ${currentYear} All rights reserved.</p>
     </div>
 
     <p style="color: #9ca3af; font-size: 12px; text-align: center; margin-top: 40px;">

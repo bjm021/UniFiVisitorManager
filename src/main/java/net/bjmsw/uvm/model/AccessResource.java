@@ -1,5 +1,6 @@
 package net.bjmsw.uvm.model;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -7,7 +8,7 @@ import java.util.List;
  * This represents a UniFi Access Resource
  * That being a door or door group, basically a resource that can be used in an Access Policy
  */
-public class AccessResource {
+public class AccessResource implements Serializable {
 
     private final String id, name, type;
     private final boolean isGroup;

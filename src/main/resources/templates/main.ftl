@@ -1,4 +1,5 @@
 <#import "components/card.ftl" as c>
+<#import "components/header.ftl" as h>
 <#import "components/footer.ftl" as f>
 
 <!DOCTYPE html>
@@ -21,7 +22,9 @@
 </head>
 <body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen p-4">
 
-<div class="flex flex-col lg:flex-row gap-6 w-full max-w-7xl mx-auto">
+<@h.header maxWidth="max-w-7xl" />
+
+<div class="flex flex-col lg:flex-row gap-6 w-full max-w-7xl mx-auto mt-8">
 
     <@c.ui title="Saved Privileged Visitors" widthClass="w-full lg:w-2/3">
         <a href="/testWallet">ONLY TO TEST</a>
@@ -34,7 +37,7 @@
 
 </div>
 
-<div class="w-full max-w-7xl mx-auto mt-8">
+<div class="w-full max-w-7xl mx-auto mt-8" id="plan-event">
     <@c.ui title="Plan a new Event">
         <small class="text-sm text-gray-600 mb-2 block text-center">
             This will generate the saved privileged Visitors inside your Access App and give them QR Codes to access the
@@ -57,12 +60,15 @@
 </div>
 
 <div class="w-full max-w-7xl mx-auto mt-8">
-    <@c.ui title="Old (all) Events">
+    <@c.ui title="All Events">
         <small class="text-sm text-gray-600 mb-2 block text-center">
             This will show all Events (even the ones that are not active anymore) and their details, including the Visitors that were invited to them
         </small>
+        <#include "components/all_event_table.ftl">
     </@c.ui>
 </div>
+
+<#include "components/delete_modal.ftl">
 
 <@f.footer maxWidth="max-w-7xl" />
 

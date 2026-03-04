@@ -1,9 +1,12 @@
 package net.bjmsw.uvm;
 
+import net.bjmsw.uvm.model.Event;
 import net.bjmsw.uvm.model.PrivilegedVisitor;
 import net.bjmsw.uvm.servers.MainServer;
 import net.bjmsw.uvm.servers.SettingsServer;
 import net.bjmsw.uvm.util.ApiClient;
+import net.bjmsw.uvm.util.GarbageCollector;
+import net.bjmsw.uvm.util.MailScheduler;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
 import org.mapdb.HTreeMap;
@@ -13,8 +16,11 @@ public class VisitorManager {
 
     private static DB db;
     private static HTreeMap<String, PrivilegedVisitor> privilegedVisitors;
-    public static HTreeMap<String, String> settings;
+    private static HTreeMap<String, Event> events;
+    private static HTreeMap<String, String> settings;
     private static ApiClient apiClient;
+    private static MailScheduler mailScheduler;
+    private static GarbageCollector gc;
 
     @SuppressWarnings("unchecked")
     public static void main(String[] args) {
@@ -26,7 +32,12 @@ public class VisitorManager {
 
             privilegedVisitors = db.<String, PrivilegedVisitor>hashMap("visitors")
                     .keySerializer(Serializer.STRING)
-                    .valueSerializer((Serializer<PrivilegedVisitor>) Serializer.JAVA) // Cast to fix the second warning
+                    .valueSerializer((Serializer<PrivilegedVisitor>) Serializer.JAVA)
+                    .createOrOpen();
+
+            events = db.<String, Event>hashMap("events")
+                    .keySerializer(Serializer.STRING)
+                    .valueSerializer((Serializer<Event>) Serializer.JAVA)
                     .createOrOpen();
 
             settings = db.<String, String>hashMap("settings")
@@ -63,7 +74,8 @@ public class VisitorManager {
             System.out.println("- SMTP Password: " + (settings.get("smtpPass") != null ? "<redacted>" : "<MISSING>"));
             System.out.println("- From Name: " + settings.get("smtpFromName"));
             System.out.println("---------------[UVM Settings End]---------------");
-
+            System.out.println("[UniFi MailSubsystem] Starting MailScheduler...");
+            mailScheduler = new MailScheduler(5);
 
             System.out.println("[UniFi VisitorManager] Starting API Client...");
 
@@ -77,6 +89,9 @@ public class VisitorManager {
                 SettingsServer.start("Failed to connect to UniFi Controller. Please check your settings and try again.");
                 return;
             }
+
+            gc = new GarbageCollector(3600000);
+            gc.start();
 
             System.out.println("[UniFi VisitorManager] Starting main program...");
             MainServer.start();
@@ -94,9 +109,11 @@ public class VisitorManager {
      */
     public static void shutdown(boolean noExit) {
         if (db != null && !db.isClosed()) {
+            if (mailScheduler != null) mailScheduler.shutdown();
             db.close();
             System.out.println("[UniFi VisitorManager] Database closed successfully!");
         }
+        if (gc != null) gc.stop();
         if (!noExit)
             System.exit(0);
     }
@@ -119,6 +136,14 @@ public class VisitorManager {
 
     public static HTreeMap<String, PrivilegedVisitor> getPrivilegedVisitors() {
         return privilegedVisitors;
+    }
+
+    public static MailScheduler getMailScheduler() {
+        return mailScheduler;
+    }
+
+    public static HTreeMap<String, Event> getEvents() {
+        return events;
     }
 
     public static void dispatchRestart(int milliseconds) {

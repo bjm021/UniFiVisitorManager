@@ -24,6 +24,7 @@
 
 <div class="flex-1 w-full">
     <label for="resource_id" class="block text-sm font-medium text-gray-700 mb-1">Select Location / Door</label>
+    <small class="text-gray-500">Select a door or location group to access.</small>
     <select name="resource_id" id="resource_id" required class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border bg-white">
         <option value="" disabled selected>-- Choose a Location --</option>
 

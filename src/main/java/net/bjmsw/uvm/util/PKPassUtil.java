@@ -134,9 +134,7 @@ public class PKPassUtil {
 
         // Apple Wallet REQUIRES at least an icon.png to be valid.
         addResourceToTemplate(template, "icon.png", "/pass/icon.png");
-        addResourceToTemplate(template, "icon@2x.png", "/pass/icon@2x.png");
         addResourceToTemplate(template, "logo.png", "/pass/logo.png");
-        addResourceToTemplate(template, "logo@2x.png", "/pass/logo@2x.png");
 
         // 4. Cryptographically Sign and ZIP the archive using the In-Memory utility
         PKInMemorySigningUtil pkSigningUtil = new PKInMemorySigningUtil();

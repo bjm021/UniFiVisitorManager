@@ -1,6 +1,7 @@
 package net.bjmsw.uvm.model;
 
 import net.bjmsw.uvm.util.ApiClient;
+import net.bjmsw.uvm.util.TimeUtils;
 import org.json.JSONObject;
 import org.jspecify.annotations.NonNull;
 import org.mapdb.DataInput2;
@@ -9,6 +10,7 @@ import org.mapdb.Serializer;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.sql.Time;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
@@ -19,11 +21,11 @@ public class Visitor implements Serializable {
 
     private final String id, firstname, lastname, status, inviter_id, inviter_name, remarks, email, visitor_company;
 
-    private final int start_time, end_time;
+    private final long start_time, end_time;
 
     private final JSONObject allData;
 
-    public Visitor(JSONObject allData, String id, String firstName, String lastName, String status, String inviter_id, String inviter_name, String remarks, String email, String visitor_company, int start_time, int end_time) {
+    public Visitor(JSONObject allData, String id, String firstName, String lastName, String status, String inviter_id, String inviter_name, String remarks, String email, String visitor_company, long start_time, long end_time) {
         this.allData = allData;
         this.id = id;
         this.firstname = firstName;
@@ -49,8 +51,8 @@ public class Visitor implements Serializable {
         this.remarks = allData.getString("remarks");
         this.email = allData.getString("email");
         this.visitor_company = allData.getString("visitor_company");
-        this.start_time = allData.getInt("start_time");
-        this.end_time = allData.getInt("end_time");
+        this.start_time = allData.getLong("start_time");
+        this.end_time = allData.getLong("end_time");
      }
 
     public String getId() {
@@ -101,11 +103,11 @@ public class Visitor implements Serializable {
         apiClient.downloadQR(this);
     }
 
-    public int getStart_time() {
+    public long getStart_time() {
         return start_time;
     }
 
-    public int getEnd_time() {
+    public long getEnd_time() {
         return end_time;
     }
 
@@ -114,22 +116,7 @@ public class Visitor implements Serializable {
      * @return String
      */
     public String getPrettyDateRange() {
-        // 1. Always use a specific ZoneId instead of systemDefault()
-        // Replace "Europe/Berlin" with the actual timezone of the UniFi site
-        ZoneId siteZone = ZoneId.of("Europe/Berlin");
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
-        String start = formatter.format(
-                java.time.Instant.ofEpochSecond(start_time)
-                        .atZone(siteZone)
-        );
-
-        String end = formatter.format(
-                java.time.Instant.ofEpochSecond(end_time)
-                        .atZone(siteZone)
-        );
-
-        return start + " to " + end;
+        return TimeUtils.getPrettyDateRange(start_time, end_time);
     }
 
     @Override

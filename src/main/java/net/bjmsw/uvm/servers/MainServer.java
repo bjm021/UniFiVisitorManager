@@ -1,22 +1,16 @@
 package net.bjmsw.uvm.servers;
 
-import de.brendamour.jpasskit.PKPass;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
 import io.javalin.rendering.template.JavalinFreemarker;
 import net.bjmsw.uvm.VisitorManager;
 import net.bjmsw.uvm.model.AccessResource;
+import net.bjmsw.uvm.model.Event;
 import net.bjmsw.uvm.model.PrivilegedVisitor;
 import net.bjmsw.uvm.model.Visitor;
-import net.bjmsw.uvm.util.MailUtil;
-import net.bjmsw.uvm.util.PKPassUtil;
-import net.bjmsw.uvm.util.QRCodeUtils;
 import net.bjmsw.uvm.util.TimeUtils;
 
-import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class MainServer {
 
@@ -40,35 +34,41 @@ public class MainServer {
                 model.put("visitors", VisitorManager.getApiClient().getVisitors());
                 model.put("privilegedVisitors", VisitorManager.getPrivilegedVisitors());
                 model.put("accessResources", VisitorManager.getApiClient().getAccessResources());
+                model.put("events", VisitorManager.getEvents());
 
                 checkAndAddToModel(ctx, model, "pv_success");
                 checkAndAddToModel(ctx, model, "otv_success");
                 checkAndAddToModel(ctx, model, "otv_error");
+                checkAndAddToModel(ctx, model, "delete_otv_success");
+                checkAndAddToModel(ctx, model, "delete_otv_error");
+                checkAndAddToModel(ctx, model, "pe_success");
 
                 ctx.render("templates/main.ftl", model);
             });
 
+            config.routes.get("/emailtest", ctx -> {
+                Visitor v = VisitorManager.getApiClient().getVisitors().get(0);
+                Map<String, Object> model = new HashMap<>();
+                model.put("visitorName", v.getFirstName());
+                model.put("eventName", "Onetime Visitor");
+                if (VisitorManager.getSettings().get("appleOrgName") != null) {
+                    model.put("companyName", VisitorManager.getSettings().get("appleOrgName"));
+                } else {
+                    model.put("companyName", "Powered by UniFi Visitor Manager");
+                }
+                model.put("currentYear", TimeUtils.getCurrentYear());
+                model.put("visitStartTime", TimeUtils.fromEpochSecondsToDateTimeString(v.getStart_time(), "E dd MMM yyyy HH:mm"));
+                model.put("visitEndTime", TimeUtils.fromEpochSecondsToDateTimeString(v.getEnd_time(), "E dd MMM yyyy HH:mm"));
+                model.put("customMessage", "This is a custom message from UniFi Visitor Manager.");
+
+
+                ctx.render("templates/email/visitor_invite.ftl", model);
+            });
+
             config.routes.post("/create-pv", this::handleNewPrivilegedVisitor);
             config.routes.post("/create-otv", this::handleNewOnetimeVisitor);
-
-            /*
-            // DEBUG: Test Wallet Route - Do not commit enabled
-            config.routes.get("/testWallet", ctx -> {
-                if (VisitorManager.getApiClient().getVisitors().isEmpty()) {
-                    ctx.result("No visitors found");
-                    return;
-                }
-                Visitor v = VisitorManager.getApiClient().getVisitors().get(0);
-                String data = QRCodeUtils.downloadAndDecodeUniFiQR(VisitorManager.getApiClient(), v);
-
-                PKPass p = PKPassUtil.buildWalletPass(v, data,"TestEvent");
-                byte[] pkdata = PKPassUtil.signAndZipPass(p);
-
-                ctx.contentType("application/vnd.apple.pkpass");
-                ctx.header("Content-Disposition", "attachment; filename=\"AccessPass.pkpass\"");
-                ctx.result(pkdata);
-            });
-            */
+            config.routes.post("/delete-otv", this::handleDeleteOTV);
+            config.routes.post("/plan_event", this::handleNewEvent);
 
         }).start(8080);
     }
@@ -108,12 +108,10 @@ public class MainServer {
             String last_name = ctx.formParam("last_name");
             String email = ctx.formParam("email");
 
-            long startTime = TimeUtils.formToEpochSeconds(ctx.formParam("access_start"));
-            long endTime = TimeUtils.formToEpochSeconds(ctx.formParam("access_end"));
+            long startTime = TimeUtils.formStringToEpochSeconds(ctx.formParam("access_start"));
+            long endTime = TimeUtils.formStringToEpochSeconds(ctx.formParam("access_end"));
 
             String resourceId = ctx.formParam("resource_id");
-
-            // String customMessage = ctx.formParam("custom_message"); // Unused
 
             AccessResource ars = AccessResource.findResourceById(VisitorManager.getApiClient().getAccessResources(), resourceId);
             if (ars == null) {
@@ -123,55 +121,62 @@ public class MainServer {
                 return;
             }
 
-            // build remark String for Unifi Admins UVM_ONETIME_DDMMYY_HHMMSS (for easy identification and cleanup)
-
             Visitor v = VisitorManager.getApiClient().createVisitor(first_name, last_name, email, startTime, endTime, "UVM_ONETIME_" + TimeUtils.buildInternalDateTimeString(System.currentTimeMillis() / 1000), ars.getId(), ars.getType());
-            v.assignQR(VisitorManager.getApiClient());
 
-            sendInviteMail(v, ctx);
+            String customMessage = ctx.formParam("custom_message");
+
+            VisitorManager.getMailScheduler().scheduleMail(v, "Onetime Visitor Access", customMessage);
 
             ctx.cookie("otv_success", "true");
-            ctx.redirect("/");
+            ctx.redirect("/#otv-add-form");
         } catch (Exception e) {
             System.err.println("[UniFi API Error] Failed to create Onetime Visitor: " + e.getMessage());
             e.printStackTrace();
             ctx.cookie("otv_error", "true");
-            ctx.redirect("/");
+            ctx.redirect("/#otv-add-form");
         }
     }
 
-    private boolean sendInviteMail(Visitor v, Context ctx) {
+    private void handleNewEvent(Context ctx) {
+
+        // get all data needed for the event
         try {
-            JavalinFreemarker freemarker = new JavalinFreemarker();
-            Map<String, Object> model = new HashMap<>();
-            model.put("visitorName", v.getFirstName());
-            model.put("eventName", "Onetime Visitor");
+            AccessResource ar = AccessResource.findResourceById(VisitorManager.getApiClient().getAccessResources(), ctx.formParam("resource_id"));
+            String description = ctx.formParam("description");
+            String name = ctx.formParam("name");
+            long startTime = TimeUtils.formStringToEpochSeconds(ctx.formParam("start_time"));
+            long endTime = TimeUtils.formStringToEpochSeconds(ctx.formParam("end_time"));
+            List<String> pv_ids = ctx.formParams("pv_ids");
+            List<PrivilegedVisitor> pv_list = VisitorManager.getPrivilegedVisitors().values().stream().filter(pv -> pv_ids.contains(pv.getId())).toList();
 
-            String htmlBody = freemarker.render("templates/email/visitor_invite.ftl", model, ctx);
+            Event e = new Event(UUID.randomUUID().toString(), name, description, startTime, endTime, ar, pv_list);
+            VisitorManager.getEvents().put(e.getId(), e);
+            e.publishAsync(VisitorManager.getApiClient());
+            VisitorManager.getDb().commit();
 
-            String qrData = QRCodeUtils.downloadAndDecodeUniFiQR(VisitorManager.getApiClient(), v);
-            System.out.println("[UniFi QR] QR Code Data: " + qrData);
-
-            File qrImage = new File("qr-data", v.getId() + ".png");
-
-            PKPass pk = PKPassUtil.buildWalletPass(v, qrData, "Onetime Visitor Access");
-            byte[] pkdata = PKPassUtil.signAndZipPass(pk);
-
-            MailUtil.sendVisitorInvite(
-                    v.getEmail(),
-                    v.getFirstName(),
-                    v.getLastName(),
-                    "Onetime Visitor Access",
-                    pkdata,
-                    qrImage,
-                    htmlBody
-            );
-            return true;
+            ctx.cookie("pe_success", "true");
+            ctx.redirect("/#plan-event");
         } catch (Exception e) {
-            System.err.println("[UniFi Error] Failed to send invite email: " + e.getMessage());
+            System.err.println("[UniFi API Error] Failed to create Onetime Visitor: " + e.getMessage());
             e.printStackTrace();
-            return false;
+            ctx.cookie("pe_error", "true");
+            ctx.redirect("/#plan-event");
         }
     }
 
+    private void handleDeleteOTV(Context ctx) {
+        String id = ctx.formParam("id");
+
+        boolean success = VisitorManager.getApiClient().deleteVisitor(id);
+
+        if (success) {
+            ctx.cookie("delete_otv_success", "true");
+        } else {
+            ctx.cookie("delete_otv_error", "true");
+        }
+
+        String redirect = ctx.formParam("redirect");
+
+        ctx.redirect("/#" + redirect);
+    }
 }
