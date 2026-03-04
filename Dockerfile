@@ -25,8 +25,6 @@ FROM eclipse-temurin:25-jre
 
 WORKDIR /app
 
-# Step 5: Copy ONLY the finished JAR file from the "builder" stage above
-# (We leave all the heavy Maven source code and cached files behind to keep the image tiny)
 COPY --from=builder /build/target/UniFiVisitorManager-1.0-SNAPSHOT-jar-with-dependencies.jar /app/app.jar
 
 EXPOSE 8080

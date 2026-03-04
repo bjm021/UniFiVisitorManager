@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   visitor-manager:
-    build: .
+    image: ghcr.io/bjm021/unifivisitormanager:latest
     container_name: unifi-visitor-manager
     ports:
       - "8080:8080"
