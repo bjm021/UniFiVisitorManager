@@ -24,6 +24,7 @@
 <div class="flex flex-col lg:flex-row gap-6 w-full max-w-7xl mx-auto">
 
     <@c.ui title="Saved Privileged Visitors" widthClass="w-full lg:w-2/3">
+        <a href="/testWallet">ONLY TO TEST</a>
         <#include "components/privileged_visitors_table.ftl">
     </@c.ui>
 
@@ -39,13 +40,14 @@
             This will generate the saved privileged Visitors inside your Access App and give them QR Codes to access the
             given Location at the given Time range
         </small>
+        <#include "components/plan_event_form.ftl">
     </@c.ui>
 </div>
 
 <div class="flex flex-col lg:flex-row gap-6 w-full max-w-7xl mx-auto mt-8">
 
     <@c.ui title="Add a one-time Visitor" widthClass="w-full lg:w-1/3">
-        <p>Sidebar content, instructions, or status goes here...</p>
+        <#include "components/add_one_time_visitor.ftl">
     </@c.ui>
 
     <@c.ui title="All Console Visitors" widthClass="w-full lg:w-2/3">
@@ -55,9 +57,9 @@
 </div>
 
 <div class="w-full max-w-7xl mx-auto mt-8">
-    <@c.ui title="Old Events">
+    <@c.ui title="Old (all) Events">
         <small class="text-sm text-gray-600 mb-2 block text-center">
-            This will show all the past events and their associated visitors
+            This will show all Events (even the ones that are not active anymore) and their details, including the Visitors that were invited to them
         </small>
     </@c.ui>
 </div>

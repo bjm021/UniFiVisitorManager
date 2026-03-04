@@ -1,11 +1,11 @@
 package net.bjmsw.uvm.util;
 
+import net.bjmsw.uvm.model.AccessResource;
 import net.bjmsw.uvm.model.Visitor;
 import org.apache.commons.io.IOUtils;
 import org.apache.hc.client5.http.classic.methods.*;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
-import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
 import org.apache.hc.client5.http.ssl.NoopHostnameVerifier;
@@ -19,10 +19,14 @@ import org.jspecify.annotations.Nullable;
 
 import javax.net.ssl.SSLContext;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -36,7 +40,7 @@ public class ApiClient {
     private final String baseURL;
     private final String token;
 
-    private CloseableHttpClient httpClient;
+    private final CloseableHttpClient httpClient;
 
     public ApiClient(String baseURL, String token) throws Exception {
         this.baseURL = baseURL;
@@ -98,18 +102,19 @@ public class ApiClient {
     }
 
     /**
-     * Creates a new visitor in the UniFi system by making a POST request to the corresponding API endpoint
-     * with the specified visitor details.
+     * Creates a new visitor in the UniFi system and assigns them to a specific access resource.
      *
      * @param firstName the first name of the visitor
      * @param lastName the last name of the visitor
      * @param email the email address of the visitor
-     * @param startTime the start time of the visitor's access in Unix timestamp format
-     * @param endTime the end time of the visitor's access in Unix timestamp format
-     * @param remarks additional notes or remarks about the visitor
-     * @return the {@code Visitor} object representing the created visitor, or {@code null} if the creation failed
+     * @param startTime the start time of the visitor's access in Unix timestamp format (seconds)
+     * @param endTime the end time of the visitor's access in Unix timestamp format (seconds)
+     * @param remarks additional notes (e.g., internal Event ID)
+     * @param resourceId the UUID of the UniFi location/door
+     * @param resourceType the type of the resource (e.g., "building", "door", "floor")
+     * @return the created Visitor, or null if it failed
      */
-    public Visitor createVisitor(String firstName, String lastName, String email, long startTime, long endTime, String remarks) {
+    public Visitor createVisitor(String firstName, String lastName, String email, long startTime, long endTime, String remarks, String resourceId, String resourceType) {
         if (DEBUG)
             System.out.println("[UniFi /createVisitor] Making call to: " + baseURL + "/api/v1/developer/visitors");
 
@@ -126,15 +131,22 @@ public class ApiClient {
         body.put("end_time", endTime);
         body.put("remarks", remarks);
 
-        String allGroupsId = getAllDoorsGroupId();
+        // --- NEW RESOURCE LOGIC ---
         JSONArray resources = new JSONArray();
         JSONObject resource = new JSONObject();
-        resource.put("id", allGroupsId);
-        resource.put("type", "door_group");
+        resource.put("id", resourceId);
+        resource.put("type", resourceType); // Crucial: UniFi needs to know what this ID represents!
         resources.put(resource);
+
         body.put("resources", resources);
 
         post.setEntity(new StringEntity(body.toString(), StandardCharsets.UTF_8));
+
+        // DEBUG PRINT REQUEST DATA:
+        if (DEBUG) {
+            System.out.println("[UniFi /createVisitor] Request Body:");
+            System.out.println(body.toString(2));
+        }
 
         return extractVisitor(post);
     }
@@ -165,6 +177,74 @@ public class ApiClient {
 
         HttpDelete delete = new HttpDelete(baseURL + "/api/v1/developer/visitors/" + visitor.getId() + "/qr_codes");
         return simpleNoDataResponse(delete);
+    }
+
+    public List<AccessResource> getAccessResources() {
+        if (DEBUG) System.out.println("[UniFi /getAccessResources] Making call to: " + baseURL + "/api/v1/developer/door_groups/topology");
+        List<AccessResource> accessResourcesOut = new ArrayList<>();
+
+        HttpGet get = new HttpGet(baseURL + "/api/v1/developer/door_groups/topology");
+        get.setHeader("Authorization", "Bearer " + token);
+        get.setHeader("Accept", "application/json");
+
+        try (CloseableHttpResponse resp = httpClient.execute(get)) {
+            if (resp.getCode() >= 300) {
+                System.err.println("[UniFi API Error] Status: " + resp.getCode());
+                return accessResourcesOut;
+            }
+
+            String jsonString = IOUtils.toString(resp.getEntity().getContent(), StandardCharsets.UTF_8);
+            JSONObject root = new JSONObject(jsonString);
+
+            if (!"SUCCESS".equals(root.optString("code"))) {
+                System.err.println("[UniFi API Error] " + root.optString("msg"));
+                return accessResourcesOut;
+            }
+
+            JSONArray dataArray = root.optJSONArray("data");
+            if (dataArray == null) return accessResourcesOut;
+
+            for (int i = 0; i < dataArray.length(); i++) {
+                JSONObject topologyData = dataArray.getJSONObject(i);
+
+                AccessResource ar = new AccessResource(
+                        topologyData.getString("id"),
+                        topologyData.getString("name"),
+                        topologyData.getString("type"),
+                        Objects.equals(topologyData.getString("type"), "building")
+                );
+
+                // Use optJSONArray to prevent crashes if it's missing
+                JSONArray floors = topologyData.optJSONArray("resource_topologies");
+
+                if (floors != null) {
+                    // THE FIX: Loop through ALL floors/location groups instead of just get(0)
+                    for (int j = 0; j < floors.length(); j++) {
+                        JSONObject floorData = floors.getJSONObject(j);
+                        JSONArray resources = floorData.optJSONArray("resources");
+
+                        if (resources != null) {
+                            for (int k = 0; k < resources.length(); k++) {
+                                JSONObject resourceData = resources.getJSONObject(k);
+                                AccessResource arc = new AccessResource(
+                                        resourceData.getString("id"),
+                                        resourceData.getString("name"),
+                                        resourceData.getString("type"),
+                                        !Objects.equals(resourceData.getString("type"), "door_group")
+                                );
+                                ar.addChild(arc);
+                            }
+                        }
+                    }
+                }
+                accessResourcesOut.add(ar);
+            }
+        } catch (IOException | org.json.JSONException e) {
+            System.err.println("[UniFi /getAccessResources] Failed to parse topology: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return accessResourcesOut;
     }
 
     /**
@@ -224,7 +304,7 @@ public class ApiClient {
 
         // Put BOTH the network connection and the file stream inside the parentheses!
         try (CloseableHttpResponse resp = httpClient.execute(get);
-             java.io.OutputStream outStream = java.nio.file.Files.newOutputStream(out)) {
+             OutputStream outStream = Files.newOutputStream(out)) {
 
             // Copy from the network stream directly into the file stream
             IOUtils.copy(resp.getEntity().getContent(), outStream);
@@ -248,7 +328,7 @@ public class ApiClient {
      * @return a {@code CloseableHttpClient} configured to trust all SSL certificates and ignore hostname verification
      * @throws Exception if an error occurs during the client creation process
      */
-    private static CloseableHttpClient createInsecureClient() throws Exception {
+    private static CloseableHttpClient createInsecureClient() throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
         // 1. SSLContext erstellen, der ALLEM vertraut
         SSLContext sslContext = SSLContexts.custom()
                 .loadTrustMaterial(null, TrustAllStrategy.INSTANCE)

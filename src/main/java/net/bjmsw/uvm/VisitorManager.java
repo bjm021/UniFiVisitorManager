@@ -1,7 +1,6 @@
 package net.bjmsw.uvm;
 
 import net.bjmsw.uvm.model.PrivilegedVisitor;
-import net.bjmsw.uvm.model.Visitor;
 import net.bjmsw.uvm.servers.MainServer;
 import net.bjmsw.uvm.servers.SettingsServer;
 import net.bjmsw.uvm.util.ApiClient;
@@ -14,16 +13,16 @@ public class VisitorManager {
 
     private static DB db;
     private static HTreeMap<String, PrivilegedVisitor> privilegedVisitors;
-    private static HTreeMap<String, String> settings;
+    public static HTreeMap<String, String> settings;
     private static ApiClient apiClient;
 
     @SuppressWarnings("unchecked")
-    static void main() {
+    public static void main(String[] args) {
 
         // prepare Data Storage
         try  {
             // do something with the database
-            db = DBMaker.fileDB("visitors.db").make();
+            db = DBMaker.fileDB("uvm_data.db").make();
 
             privilegedVisitors = db.<String, PrivilegedVisitor>hashMap("visitors")
                     .keySerializer(Serializer.STRING)
@@ -46,6 +45,26 @@ public class VisitorManager {
             }
 
             System.out.println("[UniFi VisitorManager] Database initialized successfully!");
+            System.out.println("[UniFi VisitorManager] Settings: ");
+            System.out.println("---------------[UniFi Settings]---------------");
+            System.out.println("- Hostname: " + settings.get("hostname"));
+            System.out.println("- Token: " + (settings.get("token") != null ? "<redacted>" : "<MISSING>"));
+            System.out.println("---------------[Apple Settings]---------------");
+            System.out.println("- Apple Team ID: " + settings.get("appleTeamId"));
+            System.out.println("- Apple PassType ID: " + settings.get("applePassTypeId"));
+            System.out.println("- Organization Name: " + settings.get("appleOrgName"));
+            System.out.println("- Private Key Path: " + settings.get("appleP12Path"));
+            System.out.println("- Private Key Password: " + (settings.get("appleP12Password") != null ? "<redacted>" : "<MISSING>"));
+            System.out.println("- Private WWDR Path: " + settings.get("appleWwdrPath"));
+            System.out.println("---------------[Mailer Settings]---------------");
+            System.out.println("- SMTP Host: " + settings.get("smtpHost"));
+            System.out.println("- SMTP Port: " + settings.get("smtpPort"));
+            System.out.println("- SMTP Username: " + settings.get("smtpUser"));
+            System.out.println("- SMTP Password: " + (settings.get("smtpPass") != null ? "<redacted>" : "<MISSING>"));
+            System.out.println("- From Name: " + settings.get("smtpFromName"));
+            System.out.println("---------------[UVM Settings End]---------------");
+
+
             System.out.println("[UniFi VisitorManager] Starting API Client...");
 
             try {
@@ -74,8 +93,10 @@ public class VisitorManager {
      * This will ensure that the database is properly closed before exiting the application.
      */
     public static void shutdown(boolean noExit) {
-        db.close();
-        System.out.println("[UniFi VisitorManager] Database closed successfully!");
+        if (db != null && !db.isClosed()) {
+            db.close();
+            System.out.println("[UniFi VisitorManager] Database closed successfully!");
+        }
         if (!noExit)
             System.exit(0);
     }

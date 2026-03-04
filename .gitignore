@@ -327,7 +327,7 @@ package.json
 tailwind.config.js
 
 # Data store
-visitors.db
+uvm_data.db
 qr-data
 **/qr-data/**
 

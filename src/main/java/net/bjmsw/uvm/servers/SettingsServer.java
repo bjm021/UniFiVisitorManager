@@ -15,7 +15,6 @@ public class SettingsServer {
     private static SettingsServer instance;
     private final Javalin app;
 
-    @SuppressWarnings("ConstantConditions,CallToPrintStackTrace,HttpUrlsUsage")
     private SettingsServer(String configFailed) {
         if (configFailed != null) {
             System.out.println("[UniFi SettingsServer] Configuration failed: " + configFailed);
@@ -29,6 +28,7 @@ public class SettingsServer {
             config.staticFiles.add("/public");
 
             config.routes.exception(Exception.class, (e, ctx) -> {
+                System.err.println("[SettingsServer] Unhandled exception: " + e.getMessage());
                 e.printStackTrace();
                 ctx.status(500).result("The actual error is: " + e.getMessage());
                 VisitorManager.shutdown();
@@ -59,21 +59,36 @@ public class SettingsServer {
 
             config.routes.post("/update-settings", ctx -> {
                 try {
+                    // --- 1. UniFi Settings ---
                     String hostname = ctx.formParam("hostname");
                     String token = ctx.formParam("token");
 
-                    if (hostname.startsWith("http://")) {
-                        hostname = hostname.replace("http://", "https://");
+                    if (hostname != null) {
+                        if (hostname.startsWith("http://")) hostname = hostname.replace("http://", "https://");
+                        if (!hostname.startsWith("https://")) hostname = "https://" + hostname;
+                        if (hostname.endsWith("/")) hostname = hostname.substring(0, hostname.length() - 1);
+                        VisitorManager.getSettings().put("hostname", hostname);
                     }
-                    if (!hostname.startsWith("https://")) {
-                        hostname = "https://" + hostname;
-                    }
-                    if (hostname.endsWith("/")) {
-                        hostname = hostname.substring(0, hostname.length() - 1);
+                    if (token != null && !token.isBlank()) {
+                        VisitorManager.getSettings().put("token", token);
                     }
 
-                    VisitorManager.getSettings().put("hostname", hostname);
-                    VisitorManager.getSettings().put("token", token);
+                    // --- 2. Apple Wallet Settings (jpasskit) ---
+                    VisitorManager.getSettings().put("appleTeamId", ctx.formParam("appleTeamId"));
+                    VisitorManager.getSettings().put("applePassTypeId", ctx.formParam("applePassTypeId"));
+                    VisitorManager.getSettings().put("appleOrgName", ctx.formParam("appleOrgName"));
+                    VisitorManager.getSettings().put("appleP12Path", ctx.formParam("appleP12Path")); // Path to cert on server
+                    VisitorManager.getSettings().put("appleP12Password", ctx.formParam("appleP12Password"));
+                    VisitorManager.getSettings().put("appleWwdrPath", ctx.formParam("appleWwdrPath"));
+
+                    // --- 3. SMTP Email Settings ---
+                    VisitorManager.getSettings().put("smtpHost", ctx.formParam("smtpHost"));
+                    VisitorManager.getSettings().put("smtpPort", ctx.formParam("smtpPort"));
+                    VisitorManager.getSettings().put("smtpUser", ctx.formParam("smtpUser"));
+                    VisitorManager.getSettings().put("smtpPass", ctx.formParam("smtpPass"));
+                    VisitorManager.getSettings().put("smtpFromName", ctx.formParam("smtpFromName"));
+
+                    // Save to MapDB
                     VisitorManager.getDb().commit();
 
                     ctx.cookie("successMessage", URLEncoder.encode("Settings updated successfully!", StandardCharsets.UTF_8));
