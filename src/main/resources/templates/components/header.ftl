@@ -4,7 +4,7 @@
             UniFi VisitorManager
         </h1>
         <p class="text-sm text-gray-600 mb-2">
-            Version 0.1 by Benjamin J. Meyer
+            Version 1.0 by Benjamin J. Meyer
         </p>
     </div>
 </#macro>

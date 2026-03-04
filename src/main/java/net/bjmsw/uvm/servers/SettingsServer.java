@@ -30,7 +30,7 @@ public class SettingsServer {
             config.routes.exception(Exception.class, (e, ctx) -> {
                 System.err.println("[SettingsServer] Unhandled exception: " + e.getMessage());
                 e.printStackTrace();
-                ctx.status(500).result("The actual error is: " + e.getMessage());
+                ctx.status(500).result("An internal server error occurred.");
                 VisitorManager.shutdown();
             });
 

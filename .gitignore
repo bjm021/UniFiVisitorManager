@@ -328,8 +328,13 @@ tailwind.config.js
 
 # Data store
 uvm_data.db
+uvm_data_old.db
 qr-data
 **/qr-data/**
+
+# Test artifacts
+test.pkpass.zip
+*.pkpass
 
 # CUSTOM DEBUG
 **/WebServerDirect.java

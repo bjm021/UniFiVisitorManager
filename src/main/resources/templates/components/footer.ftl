@@ -1,7 +1,7 @@
 <#macro footer maxWidth="max-w-4xl">
     <div class="bg-white p-8 rounded-xl shadow-lg w-full ${maxWidth} mx-auto mt-8 text-center">
         <p class="text-sm text-gray-600 mb-2">
-            UniFi VisitorManager Version 0.1
+            UniFi VisitorManager Version 1.0
         </p>
         <p class="text-sm text-gray-600">
             UniFi VisitorManager is an open-source project developed by <a href="https://github.com/bjm021" class="text-blue-500 hover:underline">Benjamin J. Meyer</a>.

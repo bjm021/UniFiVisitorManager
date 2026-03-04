@@ -30,7 +30,7 @@ public class PKPassUtil {
 
         String teamId = VisitorManager.getSettings().getOrDefault("appleTeamId", "TEAM_ID_MISSING");
         String passTypeId = VisitorManager.getSettings().getOrDefault("applePassTypeId", "pass.com.missing");
-        String orgName = VisitorManager.getSettings().getOrDefault("appleOrgName", "Meyer&Meyer");
+        String orgName = VisitorManager.getSettings().getOrDefault("appleOrgName", "Your Organization");
 
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("MMM dd, HH:mm")
                 .withZone(ZoneId.systemDefault());

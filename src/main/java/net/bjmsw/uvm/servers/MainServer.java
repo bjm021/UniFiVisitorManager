@@ -26,7 +26,7 @@ public class MainServer {
             config.routes.exception(Exception.class, (e, ctx) -> {
                 System.err.println("[MainServer] Unhandled exception: " + e.getMessage());
                 e.printStackTrace();
-                ctx.status(500).result("The actual error is: " + e.getMessage());
+                ctx.status(500).result("An internal server error occurred.");
             });
 
             config.routes.get("/", ctx -> {
@@ -46,24 +46,6 @@ public class MainServer {
                 ctx.render("templates/main.ftl", model);
             });
 
-            config.routes.get("/emailtest", ctx -> {
-                Visitor v = VisitorManager.getApiClient().getVisitors().get(0);
-                Map<String, Object> model = new HashMap<>();
-                model.put("visitorName", v.getFirstName());
-                model.put("eventName", "Onetime Visitor");
-                if (VisitorManager.getSettings().get("appleOrgName") != null) {
-                    model.put("companyName", VisitorManager.getSettings().get("appleOrgName"));
-                } else {
-                    model.put("companyName", "Powered by UniFi Visitor Manager");
-                }
-                model.put("currentYear", TimeUtils.getCurrentYear());
-                model.put("visitStartTime", TimeUtils.fromEpochSecondsToDateTimeString(v.getStart_time(), "E dd MMM yyyy HH:mm"));
-                model.put("visitEndTime", TimeUtils.fromEpochSecondsToDateTimeString(v.getEnd_time(), "E dd MMM yyyy HH:mm"));
-                model.put("customMessage", "This is a custom message from UniFi Visitor Manager.");
-
-
-                ctx.render("templates/email/visitor_invite.ftl", model);
-            });
 
             config.routes.post("/create-pv", this::handleNewPrivilegedVisitor);
             config.routes.post("/create-otv", this::handleNewOnetimeVisitor);

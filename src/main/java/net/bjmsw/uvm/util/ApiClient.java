@@ -37,7 +37,7 @@ import java.util.Objects;
  */
 public class ApiClient {
 
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
     private final String baseURL;
     private final String token;
 
@@ -240,36 +240,6 @@ public class ApiClient {
         }
 
         return accessResourcesOut;
-    }
-
-    /**
-     * Retrieves the unique identifier of the "All Doors" door group from the UniFi API.
-     * TODO - This is only for now - later a fine-grained option is provided for the user to choose the exact doors/groups they want to assign.
-     *
-     * @return the unique identifier of the "All Doors" door group, or {@code null} if the group
-     * was not found or an error occurred.
-     */
-    public String getAllDoorsGroupId() {
-        if (DEBUG)
-            System.out.println("[UniFi /getAllDoorsGroupId] Making call to: " + baseURL + "/api/v1/developer/door_groups/topology");
-
-        HttpGet get = new HttpGet(baseURL + "/api/v1/developer/door_groups/topology");
-        get.setHeader("Authorization", "Bearer " + token);
-        get.setHeader("Accept", "application/json");
-
-        try (CloseableHttpResponse resp = httpClient.execute(get)) {
-            String s = IOUtils.toString(resp.getEntity().getContent(), StandardCharsets.UTF_8);
-            JSONObject root = new JSONObject(s);
-            for (Object doorGroup : root.getJSONArray("data")) {
-                JSONObject doorGroupData = (JSONObject) doorGroup;
-                if (Objects.equals(doorGroupData.getString("name"), "All Doors")) {
-                    return doorGroupData.getString("id");
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 
     /**
