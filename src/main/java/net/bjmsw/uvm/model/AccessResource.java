@@ -10,10 +10,17 @@ import java.util.List;
  */
 public class AccessResource implements Serializable {
 
-    private final String id, name, type;
-    private final boolean isGroup;
+    private String id, name, type;
+    private boolean isGroup;
 
-    private final List<AccessResource> children;
+    private List<AccessResource> children;
+
+    /**
+     * Private constructor for the AccessResource class.
+     * This constructor is designed to restrict direct instantiation of the AccessResource class
+     * from outside its defining class. This is needed for deserialization purposes.
+     */
+    private AccessResource() {}
 
     public AccessResource(String id, String name, String type, boolean isGroup) {
         this.id = id;
