@@ -29,8 +29,11 @@ public class VisitorManager {
 
         // prepare Data Storage
         try  {
-            // do something with the database
-            db = DBMaker.fileDB("uvm_data.db").make();
+            String dataDir = System.getenv("UVM_DATA_DIR");
+            String dbPath = (dataDir != null && !dataDir.isEmpty()) ? dataDir + "/uvm_data.db" : "uvm_data.db";
+            java.io.File dbParent = new java.io.File(dbPath).getParentFile();
+            if (dbParent != null) dbParent.mkdirs();
+            db = DBMaker.fileDB(dbPath).make();
 
             privilegedVisitors = db.<String, PrivilegedVisitor>hashMap("visitors")
                     .keySerializer(Serializer.STRING)

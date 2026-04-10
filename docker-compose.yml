@@ -6,6 +6,8 @@ services:
     container_name: unifi-visitor-manager
     ports:
       - "8080:8080"
+    environment:
+      - UVM_DATA_DIR=/app/data
     volumes:
       - ./database:/app/data
     restart: unless-stopped
